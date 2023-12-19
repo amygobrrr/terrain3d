@@ -126,9 +126,9 @@ void Terrain3DEditor::_operate_map(Vector3 p_global_position, real_t p_camera_di
 	for (int x = 0; x < brush_size; x++) {
 		for (int y = 0; y < brush_size; y++) {
 			Vector2i brush_offset = Vector2i(x, y) - (Vector2i(brush_size, brush_size) / 2);
-			Vector3 brush_global_position = Vector3(0.5f, 0.f, 0.5f) +
-					Vector3(p_global_position.x + real_t(brush_offset.x), p_global_position.y,
-							p_global_position.z + real_t(brush_offset.y));
+			Vector3 brush_global_position = Vector3(0.5f, 0.5f, 0.f) +
+					Vector3(p_global_position.x + real_t(brush_offset.x), p_global_position.y + real_t(brush_offset.y),
+							p_global_position.z);
 
 			// If we're brushing across a region boundary, possibly add a region, and get the other map
 			int new_region_index = storage->get_region_index(brush_global_position);
@@ -188,8 +188,8 @@ void Terrain3DEditor::_operate_map(Vector3 p_global_position, real_t p_camera_di
 						case AVERAGE: {
 							Vector3 left_position = brush_global_position - Vector3(1, 0, 0);
 							Vector3 right_position = brush_global_position + Vector3(1, 0, 0);
-							Vector3 down_position = brush_global_position - Vector3(0, 0, 1);
-							Vector3 up_position = brush_global_position + Vector3(0, 0, 1);
+							Vector3 down_position = brush_global_position - Vector3(0, 1, 0);
+							Vector3 up_position = brush_global_position + Vector3(0, 1, 0);
 
 							real_t left = srcf, right = srcf, up = srcf, down = srcf;
 
@@ -318,7 +318,7 @@ bool Terrain3DEditor::_is_in_bounds(Vector2i p_position, Vector2i p_max_position
 }
 
 Vector2 Terrain3DEditor::_get_uv_position(Vector3 p_global_position, int p_region_size) {
-	Vector2 global_position_2d = Vector2(p_global_position.x, p_global_position.z);
+	Vector2 global_position_2d = Vector2(p_global_position.x, p_global_position.y);
 	Vector2 region_position = global_position_2d / real_t(p_region_size);
 	region_position = region_position.floor();
 	Vector2 uv_position = (global_position_2d / real_t(p_region_size)) - region_position;

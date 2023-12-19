@@ -304,55 +304,55 @@ void Terrain3D::_update_collision() {
 		map_data.resize(shape_size * shape_size);
 
 		Vector2i global_offset = Vector2i(_storage->get_region_offsets()[i]) * region_size;
-		Vector3 global_pos = Vector3(global_offset.x, 0, global_offset.y);
+		Vector3 global_pos = Vector3(global_offset.x, global_offset.y, 0);
 
-		Ref<Image> map, map_x, map_z, map_xz;
-		Ref<Image> cmap, cmap_x, cmap_z, cmap_xz;
+		Ref<Image> map, map_x, map_y, map_xy;
+		Ref<Image> cmap, cmap_x, cmap_y, cmap_xy;
 		map = _storage->get_map_region(Terrain3DStorage::TYPE_HEIGHT, i);
 		cmap = _storage->get_map_region(Terrain3DStorage::TYPE_CONTROL, i);
-		int region = _storage->get_region_index(Vector3(global_pos.x + region_size, 0, global_pos.z));
+		int region = _storage->get_region_index(Vector3(global_pos.x + region_size, global_pos.y, 0));
 		if (region >= 0) {
 			map_x = _storage->get_map_region(Terrain3DStorage::TYPE_HEIGHT, region);
 			cmap_x = _storage->get_map_region(Terrain3DStorage::TYPE_CONTROL, region);
 		}
-		region = _storage->get_region_index(Vector3(global_pos.x, 0, global_pos.z + region_size));
+		region = _storage->get_region_index(Vector3(global_pos.x, global_pos.y + region_size, 0));
 		if (region >= 0) {
-			map_z = _storage->get_map_region(Terrain3DStorage::TYPE_HEIGHT, region);
-			cmap_z = _storage->get_map_region(Terrain3DStorage::TYPE_CONTROL, region);
+			map_y = _storage->get_map_region(Terrain3DStorage::TYPE_HEIGHT, region);
+			cmap_y = _storage->get_map_region(Terrain3DStorage::TYPE_CONTROL, region);
 		}
-		region = _storage->get_region_index(Vector3(global_pos.x + region_size, 0, global_pos.z + region_size));
+		region = _storage->get_region_index(Vector3(global_pos.x + region_size, global_pos.y + region_size, 0));
 		if (region >= 0) {
-			map_xz = _storage->get_map_region(Terrain3DStorage::TYPE_HEIGHT, region);
-			cmap_xz = _storage->get_map_region(Terrain3DStorage::TYPE_CONTROL, region);
+			map_xy = _storage->get_map_region(Terrain3DStorage::TYPE_HEIGHT, region);
+			cmap_xy = _storage->get_map_region(Terrain3DStorage::TYPE_CONTROL, region);
 		}
 
-		for (int z = 0; z < shape_size; z++) {
+		for (int y = 0; y < shape_size; y++) {
 			for (int x = 0; x < shape_size; x++) {
 				// Choose array indexing to match triangulation of heightmapshape with the mesh
 				// https://stackoverflow.com/questions/16684856/rotating-a-2d-pixel-array-by-90-degrees
-				// Normal array index rotated Y=0 - shape rotation Y=0 (xform below)
-				// int index = z * shape_size + x;
-				// Array Index Rotated Y=-90 - must rotate shape Y=+90 (xform below)
-				int index = shape_size - 1 - z + x * shape_size;
+				// Normal array index rotated Z=0 - shape rotation Z=0 (xform below)
+				// int index = y * shape_size + x;
+				// Array Index Rotated Z=-90 - must rotate shape Z=+90 (xform below)
+				int index = shape_size - 1 - y + x * shape_size;
 
 				// Set heights on local map, or adjacent maps if on the last row/col
-				if (x < region_size && z < region_size) {
-					map_data[index] = (Util::is_hole(cmap->get_pixel(x, z).r)) ? hole_const : map->get_pixel(x, z).r;
-				} else if (x == region_size && z < region_size) {
+				if (x < region_size && y < region_size) {
+					map_data[index] = (Util::is_hole(cmap->get_pixel(x, y).r)) ? hole_const : map->get_pixel(x, y).r;
+				} else if (x == region_size && y < region_size) {
 					if (map_x.is_valid()) {
-						map_data[index] = (Util::is_hole(cmap_x->get_pixel(0, z).r)) ? hole_const : map_x->get_pixel(0, z).r;
+						map_data[index] = (Util::is_hole(cmap_x->get_pixel(0, y).r)) ? hole_const : map_x->get_pixel(0, y).r;
 					} else {
 						map_data[index] = 0.0f;
 					}
-				} else if (z == region_size && x < region_size) {
-					if (map_z.is_valid()) {
-						map_data[index] = (Util::is_hole(cmap_z->get_pixel(x, 0).r)) ? hole_const : map_z->get_pixel(x, 0).r;
+				} else if (y == region_size && x < region_size) {
+					if (map_y.is_valid()) {
+						map_data[index] = (Util::is_hole(cmap_y->get_pixel(x, 0).r)) ? hole_const : map_y->get_pixel(x, 0).r;
 					} else {
 						map_data[index] = 0.0f;
 					}
-				} else if (x == region_size && z == region_size) {
-					if (map_xz.is_valid()) {
-						map_data[index] = (Util::is_hole(cmap_xz->get_pixel(0, 0).r)) ? hole_const : map_xz->get_pixel(0, 0).r;
+				} else if (x == region_size && y == region_size) {
+					if (map_xy.is_valid()) {
+						map_data[index] = (Util::is_hole(cmap_xy->get_pixel(0, 0).r)) ? hole_const : map_xy->get_pixel(0, 0).r;
 					} else {
 						map_data[index] = 0.0f;
 					}
@@ -362,9 +362,9 @@ void Terrain3D::_update_collision() {
 
 		// Non rotated shape for normal array index above
 		//Transform3D xform = Transform3D(Basis(), global_pos);
-		// Rotated shape Y=90 for -90 rotated array index
+		// Rotated shape Z=90 for -90 rotated array index
 		Transform3D xform = Transform3D(Basis(Vector3(0, 1.0, 0), Math_PI * .5),
-				global_pos + Vector3(region_size, 0, region_size) * .5);
+				global_pos + Vector3(region_size, region_size, 0) * .5);
 
 		if (!_show_debug_collision) {
 			RID shape = PhysicsServer3D::get_singleton()->heightmap_shape_create();
@@ -489,66 +489,66 @@ void Terrain3D::_generate_triangles(PackedVector3Array &p_vertices, PackedVector
 		for (int r = 0; r < region_offsets.size(); ++r) {
 			Vector2i region_offset = (Vector2i)region_offsets[r] * region_size;
 
-			for (int32_t z = region_offset.y; z < region_offset.y + region_size; z += step) {
+			for (int32_t y = region_offset.y; y < region_offset.y + region_size; y += step) {
 				for (int32_t x = region_offset.x; x < region_offset.x + region_size; x += step) {
-					_generate_triangle_pair(p_vertices, p_uvs, p_lod, p_filter, p_require_nav, x, z);
+					_generate_triangle_pair(p_vertices, p_uvs, p_lod, p_filter, p_require_nav, x, y);
 				}
 			}
 		}
 	} else {
-		int32_t z_start = (int32_t)Math::ceil(p_global_aabb.position.z);
-		int32_t z_end = (int32_t)Math::floor(p_global_aabb.get_end().z) + 1;
+		int32_t y_start = (int32_t)Math::ceil(p_global_aabb.position.y);
+		int32_t y_end = (int32_t)Math::floor(p_global_aabb.get_end().y) + 1;
 		int32_t x_start = (int32_t)Math::ceil(p_global_aabb.position.x);
 		int32_t x_end = (int32_t)Math::floor(p_global_aabb.get_end().x) + 1;
 
-		for (int32_t z = z_start; z < z_end; ++z) {
+		for (int32_t y = y_start; y < y_end; ++y) {
 			for (int32_t x = x_start; x < x_end; ++x) {
-				real_t height = _storage->get_height(Vector3(x, 0.0, z));
-				if (height >= p_global_aabb.position.y && height <= p_global_aabb.get_end().y) {
-					_generate_triangle_pair(p_vertices, p_uvs, p_lod, p_filter, p_require_nav, x, z);
+				real_t height = _storage->get_height(Vector3(x, y, 0.0));
+				if (height >= p_global_aabb.position.z && height <= p_global_aabb.get_end().z) {
+					_generate_triangle_pair(p_vertices, p_uvs, p_lod, p_filter, p_require_nav, x, y);
 				}
 			}
 		}
 	}
 }
 
-void Terrain3D::_generate_triangle_pair(PackedVector3Array &p_vertices, PackedVector2Array *p_uvs, int32_t p_lod, Terrain3DStorage::HeightFilter p_filter, bool p_require_nav, int32_t x, int32_t z) const {
+void Terrain3D::_generate_triangle_pair(PackedVector3Array &p_vertices, PackedVector2Array *p_uvs, int32_t p_lod, Terrain3DStorage::HeightFilter p_filter, bool p_require_nav, int32_t x, int32_t y) const {
 	int32_t step = 1 << CLAMP(p_lod, 0, 8);
 
-	uint32_t control1 = _storage->get_control(Vector3(x, 0.0, z));
-	uint32_t control2 = _storage->get_control(Vector3(x + step, 0.0, z + step));
-	uint32_t control3 = _storage->get_control(Vector3(x, 0.0, z + step));
+	uint32_t control1 = _storage->get_control(Vector3(x, y, 0.0));
+	uint32_t control2 = _storage->get_control(Vector3(x + step, y + step, 0.0));
+	uint32_t control3 = _storage->get_control(Vector3(x, y + step, 0.0));
 	if (!Util::is_hole(control1) && !Util::is_hole(control2) && !Util::is_hole(control3)) {
 		if (!p_require_nav || (Util::is_nav(control1) && Util::is_nav(control2) && Util::is_nav(control3))) {
-			Vector3 v1 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x, 0.0, z));
-			Vector3 v2 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x + step, 0.0, z + step));
-			Vector3 v3 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x, 0.0, z + step));
+			Vector3 v1 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x, y, 0.0));
+			Vector3 v2 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x + step, y + step, 0.0));
+			Vector3 v3 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x, y + step, 0.0));
 			p_vertices.push_back(v1);
 			p_vertices.push_back(v2);
 			p_vertices.push_back(v3);
 			if (p_uvs != nullptr) {
-				p_uvs->push_back(Vector2(v1.x, v1.z));
-				p_uvs->push_back(Vector2(v2.x, v2.z));
-				p_uvs->push_back(Vector2(v3.x, v3.z));
+				p_uvs->push_back(Vector2(v1.x, v1.y));
+				p_uvs->push_back(Vector2(v2.x, v2.y));
+				p_uvs->push_back(Vector2(v3.x, v3.y));
 			}
 		}
 	}
 
-	control1 = _storage->get_control(Vector3(x, 0.0, z));
-	control2 = _storage->get_control(Vector3(x + step, 0.0, z));
-	control3 = _storage->get_control(Vector3(x + step, 0.0, z + step));
+	control1 = _storage->get_control(Vector3(x, y, 0.0));
+	control2 = _storage->get_control(Vector3(x + step, y, 0.0));
+	control3 = _storage->get_control(Vector3(x + step, y + step, 0.0));
 	if (!Util::is_hole(control1) && !Util::is_hole(control2) && !Util::is_hole(control3)) {
 		if (!p_require_nav || (Util::is_nav(control1) && Util::is_nav(control2) && Util::is_nav(control3))) {
-			Vector3 v1 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x, 0.0, z));
-			Vector3 v2 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x + step, 0.0, z));
-			Vector3 v3 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x + step, 0.0, z + step));
+			Vector3 v1 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x, y, 0.0));
+			Vector3 v2 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x + step, y, 0.0));
+			Vector3 v3 = _storage->get_mesh_vertex(p_lod, p_filter, Vector3(x + step, y + step, 0.0));
 			p_vertices.push_back(v1);
 			p_vertices.push_back(v2);
 			p_vertices.push_back(v3);
 			if (p_uvs != nullptr) {
-				p_uvs->push_back(Vector2(v1.x, v1.z));
-				p_uvs->push_back(Vector2(v2.x, v2.z));
-				p_uvs->push_back(Vector2(v3.x, v3.z));
+				p_uvs->push_back(Vector2(v1.x, v1.y));
+				p_uvs->push_back(Vector2(v2.x, v2.y));
+				p_uvs->push_back(Vector2(v3.x, v3.y));
 			}
 		}
 	}
@@ -694,10 +694,10 @@ void Terrain3D::set_show_debug_collision(bool p_enabled) {
 }
 
 /**
- * Centers the terrain and LODs on a provided position. Y height is ignored.
+ * Centers the terrain and LODs on a provided position. Z height is ignored.
  */
 void Terrain3D::snap(Vector3 p_cam_pos) {
-	p_cam_pos.y = 0;
+	p_cam_pos.z = 0;
 	LOG(DEBUG_CONT, "Snapping terrain to: ", String(p_cam_pos));
 
 	Transform3D t = Transform3D(Basis(), p_cam_pos.floor());
@@ -709,8 +709,8 @@ void Terrain3D::snap(Vector3 p_cam_pos) {
 	for (int l = 0; l < _mesh_lods; l++) {
 		real_t scale = real_t(1 << l);
 		Vector3 snapped_pos = (p_cam_pos / scale).floor() * scale;
-		Vector3 tile_size = Vector3(real_t(_mesh_size << l), 0, real_t(_mesh_size << l));
-		Vector3 base = snapped_pos - Vector3(real_t(_mesh_size << (l + 1)), 0, real_t(_mesh_size << (l + 1)));
+		Vector3 tile_size = Vector3(real_t(_mesh_size << l), real_t(_mesh_size << l), 0);
+		Vector3 base = snapped_pos - Vector3(real_t(_mesh_size << (l + 1)), real_t(_mesh_size << (l + 1)), 0);
 
 		// Position tiles
 		for (int x = 0; x < 4; x++) {
@@ -719,11 +719,11 @@ void Terrain3D::snap(Vector3 p_cam_pos) {
 					continue;
 				}
 
-				Vector3 fill = Vector3(x >= 2 ? 1 : 0, 0, y >= 2 ? 1 : 0) * scale;
-				Vector3 tile_tl = base + Vector3(x, 0, y) * tile_size + fill;
+				Vector3 fill = Vector3(x >= 2 ? 1 : 0, y >= 2 ? 1 : 0, 0) * scale;
+				Vector3 tile_tl = base + Vector3(x, y, 0) * tile_size + fill;
 				//Vector3 tile_br = tile_tl + tile_size;
 
-				Transform3D t = Transform3D().scaled(Vector3(scale, 1, scale));
+				Transform3D t = Transform3D().scaled(Vector3(scale, scale, 1));
 				t.origin = tile_tl;
 
 				RS->instance_set_transform(_data.tiles[tile], t);
@@ -732,7 +732,7 @@ void Terrain3D::snap(Vector3 p_cam_pos) {
 			}
 		}
 		{
-			Transform3D t = Transform3D().scaled(Vector3(scale, 1, scale));
+			Transform3D t = Transform3D().scaled(Vector3(scale, scale, 1));
 			t.origin = snapped_pos;
 			RS->instance_set_transform(_data.fillers[l], t);
 		}
@@ -743,26 +743,26 @@ void Terrain3D::snap(Vector3 p_cam_pos) {
 
 			// Position trims
 			{
-				Vector3 tile_center = snapped_pos + (Vector3(scale, 0, scale) * 0.5f);
+				Vector3 tile_center = snapped_pos + (Vector3(scale, scale, 0) * 0.5f);
 				Vector3 d = p_cam_pos - next_snapped_pos;
 
 				int r = 0;
 				r |= d.x >= scale ? 0 : 2;
-				r |= d.z >= scale ? 0 : 1;
+				r |= d.y >= scale ? 0 : 1;
 
 				real_t rotations[4] = { 0.0, 270.0, 90, 180.0 };
 
 				real_t angle = UtilityFunctions::deg_to_rad(rotations[r]);
-				Transform3D t = Transform3D().rotated(Vector3(0, 1, 0), -angle);
-				t = t.scaled(Vector3(scale, 1, scale));
+				Transform3D t = Transform3D().rotated(Vector3(0, 0, 1), -angle);
+				t = t.scaled(Vector3(scale, scale, 1));
 				t.origin = tile_center;
 				RS->instance_set_transform(_data.trims[edge], t);
 			}
 
 			// Position seams
 			{
-				Vector3 next_base = next_snapped_pos - Vector3(real_t(_mesh_size << (l + 1)), 0, real_t(_mesh_size << (l + 1)));
-				Transform3D t = Transform3D().scaled(Vector3(scale, 1, scale));
+				Vector3 next_base = next_snapped_pos - Vector3(real_t(_mesh_size << (l + 1)), real_t(_mesh_size << (l + 1)), 0);
+				Transform3D t = Transform3D().scaled(Vector3(scale, scale, 1));
 				t.origin = next_base;
 				RS->instance_set_transform(_data.seams[edge], t);
 			}
@@ -782,38 +782,38 @@ void Terrain3D::update_aabbs() {
 	height_range.y += abs(height_range.x); // Add below zero to total size
 
 	AABB aabb = RS->mesh_get_custom_aabb(_meshes[GeoClipMap::CROSS]);
-	aabb.position.y = height_range.x;
-	aabb.size.y = height_range.y;
+	aabb.position.z = height_range.x;
+	aabb.size.z = height_range.y;
 	RS->instance_set_custom_aabb(_data.cross, aabb);
 	RS->instance_set_extra_visibility_margin(_data.cross, _cull_margin);
 
 	aabb = RS->mesh_get_custom_aabb(_meshes[GeoClipMap::TILE]);
-	aabb.position.y = height_range.x;
-	aabb.size.y = height_range.y;
+	aabb.position.z = height_range.x;
+	aabb.size.z = height_range.y;
 	for (int i = 0; i < _data.tiles.size(); i++) {
 		RS->instance_set_custom_aabb(_data.tiles[i], aabb);
 		RS->instance_set_extra_visibility_margin(_data.tiles[i], _cull_margin);
 	}
 
 	aabb = RS->mesh_get_custom_aabb(_meshes[GeoClipMap::FILLER]);
-	aabb.position.y = height_range.x;
-	aabb.size.y = height_range.y;
+	aabb.position.z = height_range.x;
+	aabb.size.z = height_range.y;
 	for (int i = 0; i < _data.fillers.size(); i++) {
 		RS->instance_set_custom_aabb(_data.fillers[i], aabb);
 		RS->instance_set_extra_visibility_margin(_data.fillers[i], _cull_margin);
 	}
 
 	aabb = RS->mesh_get_custom_aabb(_meshes[GeoClipMap::TRIM]);
-	aabb.position.y = height_range.x;
-	aabb.size.y = height_range.y;
+	aabb.position.z = height_range.x;
+	aabb.size.z = height_range.y;
 	for (int i = 0; i < _data.trims.size(); i++) {
 		RS->instance_set_custom_aabb(_data.trims[i], aabb);
 		RS->instance_set_extra_visibility_margin(_data.trims[i], _cull_margin);
 	}
 
 	aabb = RS->mesh_get_custom_aabb(_meshes[GeoClipMap::SEAM]);
-	aabb.position.y = height_range.x;
-	aabb.size.y = height_range.y;
+	aabb.position.z = height_range.x;
+	aabb.size.z = height_range.y;
 	for (int i = 0; i < _data.seams.size(); i++) {
 		RS->instance_set_custom_aabb(_data.seams[i], aabb);
 		RS->instance_set_extra_visibility_margin(_data.seams[i], _cull_margin);
@@ -827,7 +827,7 @@ void Terrain3D::update_aabbs() {
  * Returns vec3(Double max 3.402823466e+38F) on no intersection. Test w/ if (var.x < 3.4e38)
  */
 Vector3 Terrain3D::get_intersection(Vector3 p_position, Vector3 p_direction) {
-	Vector3 test_dir = Vector3(p_direction.x, 0., p_direction.z).normalized();
+	Vector3 test_dir = Vector3(p_direction.x, p_direction.y, 0.).normalized();
 	Vector3 test_point = p_position;
 	p_direction.normalize();
 
@@ -837,7 +837,7 @@ Vector3 Terrain3D::get_intersection(Vector3 p_position, Vector3 p_direction) {
 	if (_storage.is_valid()) {
 		for (int i = 0; i < 3000; i++) {
 			test_point += test_dir;
-			test_point.y = _storage->get_height(test_point);
+			test_point.z = _storage->get_height(test_point);
 			Vector3 test_vec = (test_point - p_position).normalized();
 
 			real_t test_dotp = p_direction.dot(test_vec);
@@ -862,7 +862,7 @@ Vector3 Terrain3D::get_intersection(Vector3 p_position, Vector3 p_direction) {
 /**
  * Generates a static ArrayMesh for the terrain.
  * p_lod (0-8): Determines the granularity of the generated mesh.
- * p_filter: Controls how vertices' Y coordinates are generated from the height map.
+ * p_filter: Controls how vertices' Z coordinates are generated from the height map.
  *  HEIGHT_FILTER_NEAREST: Samples the height map in a 'nearest neighbour' fashion.
  *  HEIGHT_FILTER_MINIMUM: Samples a range of heights around each vertex and returns the lowest.
  *   This takes longer than ..._NEAREST, but can be used to create occluders, since it can guarantee the

@@ -107,7 +107,7 @@ void Terrain3DStorage::set_region_offsets(const TypedArray<Vector2i> &p_offsets)
 
 /** Returns a region offset given a location */
 Vector2i Terrain3DStorage::get_region_offset(Vector3 p_global_position) {
-	return Vector2i((Vector2(p_global_position.x, p_global_position.z) / real_t(_region_size)).floor());
+	return Vector2i((Vector2(p_global_position.x, p_global_position.y) / real_t(_region_size)).floor());
 }
 
 int Terrain3DStorage::get_region_index(Vector3 p_global_position) {
@@ -487,7 +487,7 @@ Color Terrain3DStorage::get_pixel(MapType p_map_type, Vector3 p_global_position)
 	Vector2i global_offset = Vector2i(get_region_offsets()[region]) * _region_size;
 	Vector2i img_pos = Vector2i(
 			Vector2(p_global_position.x - global_offset.x,
-					p_global_position.z - global_offset.y)
+					p_global_position.y - global_offset.y)
 					.floor());
 	return map->get_pixelv(img_pos);
 }
@@ -749,12 +749,12 @@ void Terrain3DStorage::import_images(const TypedArray<Image> &p_images, Vector3 
 	}
 
 	int max_dimension = _region_size * REGION_MAP_SIZE / 2;
-	if ((abs(p_global_position.x) > max_dimension) || (abs(p_global_position.z) > max_dimension)) {
-		LOG(ERROR, "Specify a position within +/-", Vector3i(max_dimension, 0, max_dimension));
+	if ((abs(p_global_position.x) > max_dimension) || (abs(p_global_position.y) > max_dimension)) {
+		LOG(ERROR, "Specify a position within +/-", Vector3i(max_dimension, max_dimension, 0));
 		return;
 	}
 	if ((p_global_position.x + img_size.x > max_dimension) ||
-			(p_global_position.z + img_size.y > max_dimension)) {
+			(p_global_position.y + img_size.y > max_dimension)) {
 		LOG(ERROR, img_size, " image will not fit at ", p_global_position,
 				". Try ", -img_size / 2, " to center");
 		return;
@@ -822,7 +822,7 @@ void Terrain3DStorage::import_images(const TypedArray<Image> &p_images, Vector3 
 				images[i] = img_slice;
 			}
 			// Add the heightmap slice and only regenerate on the last one
-			Vector3 position = Vector3(p_global_position.x + start_coords.x, 0, p_global_position.z + start_coords.y);
+			Vector3 position = Vector3(p_global_position.x + start_coords.x, p_global_position.z + start_coords.y, 0);
 			add_region(position, images, (x == slices_width - 1 && y == slices_height - 1));
 		}
 	} // for y < slices_height, x < slices_width
@@ -980,8 +980,8 @@ Vector3 Terrain3DStorage::get_mesh_vertex(int32_t p_lod, HeightFilter p_filter, 
 		case HEIGHT_FILTER_MINIMUM: {
 			height = get_height(p_global_position);
 			for (int32_t dx = -step / 2; dx < step / 2; dx += 1) {
-				for (int32_t dz = -step / 2; dz < step / 2; dz += 1) {
-					real_t h = get_height(p_global_position + Vector3(dx, 0.0, dz));
+				for (int32_t dy = -step / 2; dy < step / 2; dy += 1) {
+					real_t h = get_height(p_global_position + Vector3(dx, dy, 0.0));
 					if (h < height) {
 						height = h;
 					}
@@ -989,16 +989,16 @@ Vector3 Terrain3DStorage::get_mesh_vertex(int32_t p_lod, HeightFilter p_filter, 
 			}
 		} break;
 	}
-	return Vector3(p_global_position.x, height, p_global_position.z);
+	return Vector3(p_global_position.x, p_global_position.y, height);
 }
 
 Vector3 Terrain3DStorage::get_normal(Vector3 p_global_position) {
 	real_t left = get_height(p_global_position + Vector3(-1.0f, 0.0f, 0.0f));
 	real_t right = get_height(p_global_position + Vector3(1.0f, 0.0f, 0.0f));
-	real_t back = get_height(p_global_position + Vector3(0.f, 0.f, -1.0f));
-	real_t front = get_height(p_global_position + Vector3(0.f, 0.f, 1.0f));
-	Vector3 horizontal = Vector3(2.0f, right - left, 0.0f);
-	Vector3 vertical = Vector3(0.0f, back - front, 2.0f);
+	real_t back = get_height(p_global_position + Vector3(0.f, -1.0f, 0.f));
+	real_t front = get_height(p_global_position + Vector3(0.f, 1.0f, 0.f));
+	Vector3 horizontal = Vector3(2.0f, 0.0f, right - left);
+	Vector3 vertical = Vector3(0.0f, 2.0f, back - front);
 	Vector3 normal = vertical.cross(horizontal).normalized();
 	normal.z *= -1.0f;
 	return normal;
